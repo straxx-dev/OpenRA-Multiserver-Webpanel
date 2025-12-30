@@ -1,0 +1,104 @@
+services:
+  openra-ra:
+    build:
+      context: ./server
+      args:
+        OPENRA_TAG: "release-20250330"
+        OPENRA_APPIMAGE_FILE: "OpenRA-Red-Alert-x86_64.AppImage"
+    container_name: openra-ra
+    restart: unless-stopped
+    command:
+      - --server
+      - Game.Mod=ra
+      - Server.Name=Gaming | OpenRA RA
+      - Server.ListenPort=1234
+      - Server.AdvertiseOnline=True
+    ports:
+      - "1234:1234/tcp"
+
+  openra-td:
+    build:
+      context: ./server
+      args:
+        OPENRA_TAG: "release-20250330"
+        OPENRA_APPIMAGE_FILE: "OpenRA-Tiberian-Dawn-x86_64.AppImage"
+    container_name: openra-td
+    restart: unless-stopped
+    command:
+      - --server
+      - Game.Mod=cnc
+      - Server.Name=Gaming | OpenRA TD
+      - Server.ListenPort=1235
+      - Server.AdvertiseOnline=True
+    ports:
+      - "1235:1235/tcp"
+
+  openra-d2k:
+    build:
+      context: ./server
+      args:
+        OPENRA_TAG: "release-20250330"
+        OPENRA_APPIMAGE_FILE: "OpenRA-Dune-2000-x86_64.AppImage"
+    container_name: openra-d2k
+    restart: unless-stopped
+    command:
+      - --server
+      - Game.Mod=d2k
+      - Server.Name=Gaming | OpenRA D2K
+      - Server.ListenPort=1236
+      - Server.AdvertiseOnline=True
+    ports:
+      - "1236:1236/tcp"
+
+  openra-status:
+    build: ./status
+    container_name: openra-status
+    restart: unless-stopped
+    environment:
+      - "STATUS_NAMES=Gaming | OpenRA RA,Gaming | OpenRA TD,Gaming | OpenRA D2K"
+      - PORT_RA=1234
+      - PORT_TD=1235
+      - PORT_D2K=1236
+      - VER_RA=RELEASE-20250330
+      - VER_TD=RELEASE-20250330
+      - VER_D2K=RELEASE-20250330
+      - CLIENT_VERSION=RELEASE-20250330
+    networks:
+      - traefik_proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_network"
+
+      - "traefik.http.routers.openra-api.rule=Host(`openra.example.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.openra-api.entrypoints=websecure"
+      - "traefik.http.routers.openra-api.tls=true"
+      - "traefik.http.routers.openra-api.tls.certresolver=your_certresolver"
+
+      - "traefik.http.services.openra-api.loadbalancer.server.port=8000"
+      - "traefik.http.routers.openra-api.service=openra-api"
+
+
+  openra-web:
+    image: nginx:alpine
+    container_name: openra-web
+    restart: unless-stopped
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+    networks:
+      - traefik_proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_proxy"
+
+      - "traefik.http.routers.openra.rule=Host(`openra.example.com`)"
+      - "traefik.http.routers.openra.entrypoints=websecure"
+      - "traefik.http.routers.openra.tls=true"
+      - "traefik.http.routers.openra.tls.certresolver=your_certresolver"
+
+      - "traefik.http.services.openra-web.loadbalancer.server.port=80"
+      - "traefik.http.routers.openra.service=openra-web"
+
+
+networks:
+  traefik_proxy:
+    external: true

@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OpenRA @ HC-Gaming</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+
+<body>
+  <div class="bg" aria-hidden="true"></div>
+
+  <div class="wrap">
+    <header class="header">
+      <h1>OpenRA @ HC-Gaming</h1>
+      <div class="subtitle">Joinen, runterladen, losspielen – Server laufen öffentlich.</div>
+    </header>
+
+    <div class="grid">
+		<section class="card">
+		  <div class="cardHead">
+			<h2>Client-Version</h2>
+
+			<!-- WICHTIG: Diese Spans braucht dein bestehendes JS sehr wahrscheinlich -->
+			<div class="versionBox" style="display:none">
+			  <span class="vlabel">Client:</span> <span id="clientVer"></span>
+			  <span class="vsep">|</span>
+			  <span class="vlabel">Server:</span> <span id="serverVerTop"></span>
+			</div>
+		  </div>
+
+		  <p class="muted hint">
+			⚠️ Client und Server <strong>müssen exakt dieselbe Version</strong> verwenden,
+			sonst ist kein Beitritt möglich.
+		  </p>
+
+		  <div class="actions">
+			<a class="btn btnPrimary" href="https://github.com/OpenRA/OpenRA/tags" target="_blank" rel="noreferrer">
+			  Versionen / Tags auf GitHub
+			</a>
+			<a class="btn btnSecondary" href="https://github.com/OpenRA/OpenRA/wiki/Changelog" target="_blank" rel="noreferrer">
+			  Changelog
+			</a>
+		  </div>
+
+		  <div class="note">
+			<strong>Beispiel:</strong><br>
+			Wenn in der Serverliste <code>RELEASE-20250330</code> steht, lade genau diese Version,
+			z. B. <code>OpenRA-release-20250330-x64.exe</code> (Windows).
+		  </div>
+		</section>
+
+		<div class="card">
+		  <h3>How to join</h3>
+
+		  <ol class="howto">
+			<li>
+			  <strong>Server-Version prüfen</strong><br>
+			  In der Serverliste unten die Spalte
+			  <code>Version</code> beachten<br>
+			</li>
+
+			<li>
+			  <strong>Passenden Client herunterladen</strong><br>
+			  Auf GitHub die <b>gleiche Version</b> auswählen:
+			  <br>
+			</li>
+
+			<li>
+			  <strong>OpenRA installieren & starten</strong><br>
+			  (Windows / Linux / macOS – je nach Download)
+			</li>
+
+			<li>
+			  <strong>Server beitreten</strong><br>
+			</li>
+		  </ol>
+
+		  <div class="note">
+			⚠️ Client und Server <b>müssen exakt dieselbe Version</b> haben,
+			sonst ist kein Beitritt möglich.
+		  </div>
+		</div>
+    </div>
+
+    <section class="card statusWrap">
+      <div class="statusHead">
+        <div>
+          <h2>Serverstatus (live)</h2>
+          <div class="muted">Quelle: OpenRA Masterserver-Listing + Map-Metadaten</div>
+        </div>
+        <button class="btn" id="refreshBtn" type="button">Refresh</button>
+      </div>
+
+      <div class="tableWrap" id="tableWrap">
+        <div class="loadingOverlay" id="loadingOverlay" aria-hidden="true">
+          <div class="loader"></div>
+          <div class="loadingText">Aktualisiere…</div>
+        </div>
+
+        <table class="tbl" id="tbl">
+          <thead>
+            <tr>
+              <th>Server</th>
+              <th>Mod</th>
+              <th>Status</th>
+              <th>Players</th>
+              <th>Map</th>
+              <th>Port</th>
+              <th>Version</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="8" class="emptyRow">Lade…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="foot" id="foot"></div>
+    </section>
+
+    <section class="card">
+      <h2>Links</h2>
+      <div class="linksGrid">
+        <a class="btn" href="https://github.com/OpenRA/OpenRA" target="_blank" rel="noreferrer">GitHub</a>
+        <a class="btn" href="https://github.com/OpenRA/OpenRA/wiki" target="_blank" rel="noreferrer">Wiki</a>
+		<a class="btn" href="https://github.com/OpenRA/OpenRA/wiki/Changelog" target="_blank">Changelog</a>
+		<a class="btn" href="https://github.com/OpenRA/OpenRA/tags" target="_blank">Versionen / Tags</a>
+        <a class="btn" href="https://www.openra.net/download/" target="_blank" rel="noreferrer">Download</a>
+        <a class="btn" href="https://www.openra.net/games/" target="_blank" rel="noreferrer">Serverbrowser</a>
+      </div>
+    </section>
+  </div>
+
+<script>
+const modNames = { ra: "Red Alert", cnc: "Tiberian Dawn", d2k: "Dune 2000" };
+const stateNames = {
+  0: "Initialisierung",
+  1: "Lobby offen",
+  2: "Spiel läuft",
+  3: "Spiel beendet"
+};
+
+function safe(v){ return (v === undefined || v === null || v === "") ? "—" : String(v); }
+function esc(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+
+async function fetchJson(url){
+  const r = await fetch(url, { cache: "no-store" });
+  return await r.json();
+}
+
+function joinLink(server){
+  if (server.join_url) return server.join_url;
+  if (server.address) return `openra://join/${encodeURIComponent(server.address)}`;
+  return null;
+}
+
+function setLoading(on){
+  const ov = document.getElementById("loadingOverlay");
+  ov.classList.toggle("show", !!on);
+}
+
+function renderTable(j){
+  const tbody = document.getElementById("tbody");
+  const foot = document.getElementById("foot");
+  const servers = Array.isArray(j.servers) ? j.servers : [];
+
+  const rows = servers.map(s => {
+    const online = !!s.listed;
+    const badge = online
+      ? '<span class="pill ok">online</span>'
+      : '<span class="pill bad">offline</span>';
+
+    const mod = modNames[s.mod] || safe(s.mod);
+    const st = stateNames[s.state] || safe(s.state);
+
+	const maxP = (s.maxPlayers ?? s.maxplayers ?? s.max_players ?? null);
+	const curP = (s.players ?? s.playerCount ?? null);
+	const players = (curP !== null && maxP !== null) ? `${curP}/${maxP}` : "—";
+
+    const mapName = safe(s.mapName || s.mapHash || s.map);
+    const mapHint = s.mapHash ? `Map-ID: ${s.mapHash}` : "";
+
+    const port = safe(s.listenPort);
+    const ver = safe(s.serverVersion);
+
+    const jl = joinLink(s);
+    const joinBtn = (online && jl)
+      ? `<a class="btn btnJoin" href="${esc(jl)}" title="Öffnet den OpenRA-Client (falls installiert)">Join</a>`
+      : `<span class="btn btnDisabled" title="Join nur möglich, wenn gelistet + Client installiert">Join</span>`;
+
+    return `<tr>
+      <td class="serverCell">${badge} <b>${esc(safe(s.name))}</b></td>
+      <td>${esc(mod)}</td>
+      <td>${esc(st)}</td>
+      <td>${esc(players)}</td>
+      <td class="mapCell" title="${esc(mapHint)}">${esc(mapName)}</td>
+      <td class="mono">${esc(port)}</td>
+      <td class="mono">${esc(ver)}</td>
+      <td class="joinCell">${joinBtn}</td>
+    </tr>`;
+  }).join("");
+
+  tbody.innerHTML = rows || `<tr><td colspan="8" class="emptyRow">Keine Daten</td></tr>`;
+
+  const ts = j.ts ? new Date(j.ts * 1000) : null;
+  foot.innerHTML = `
+    <span>Last update: ${ts ? ts.toLocaleString() : "—"}</span>
+    ${j.error ? `<span class="error">API-Error: ${esc(safe(j.error))}</span>` : ""}
+    <span class="hint">Join öffnet den installierten OpenRA-Client (Browser fragt evtl. nach Erlaubnis).</span>
+  `;
+}
+
+function renderMeta(m){
+  // Client-Version / Server-Version oben
+  document.getElementById("clientVer").textContent = safe(m.clientVersion);
+
+  // Kurze Server-Übersicht: ra / cnc / d2k
+  const sv = m.serverVersions || {};
+  const top = `RA ${safe(sv.ra)} · TD ${safe(sv.cnc)} · D2K ${safe(sv.d2k)}`;
+  document.getElementById("serverVerTop").textContent = top;
+}
+
+async function refreshAll(){
+  setLoading(true);
+  try{
+    // Meta und Status parallel laden, aber ohne Layout-sprung
+    const [m, j] = await Promise.all([
+      fetchJson("/api/meta"),
+      fetchJson("/api/status")
+    ]);
+    renderMeta(m);
+    renderTable(j);
+  }catch(e){
+    // Tabelle bleibt stehen; nur Footnote zeigt Fehler
+    const foot = document.getElementById("foot");
+    foot.innerHTML = `<span class="error">Aktualisierung fehlgeschlagen.</span>`;
+  }finally{
+    setLoading(false);
+  }
+}
+
+document.getElementById("refreshBtn").addEventListener("click", refreshAll);
+refreshAll();
+setInterval(refreshAll, 300000);
+</script>
+</body>
+</html>
