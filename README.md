@@ -42,16 +42,6 @@ screenshots/
 - Keine Authentifizierung
 - Öffentliche Datenquellen
 
-## 🗂 Projektstruktur
-
-.
-├── docker-compose.yml
-├── README.md
-├── screenshots/        # Screenshots fürs Repository
-├── server/             # OpenRA Dedicated Server (RA / TD / D2K)
-├── status/             # Status- & Aggregationslogik
-└── web/                # Webpanel (HTML / CSS / JS)
-
 ## 🚀 Installation & Start
 Voraussetzungen
 
@@ -61,7 +51,7 @@ Voraussetzungen
 
 ## Starten
 
-![code]docker compose up -d
+docker compose up -d
 
 Danach ist das Webpanel unter der konfigurierten Domain erreichbar.
 
@@ -79,14 +69,10 @@ Beispiel (Windows):
 
 OpenRA-release-20250330-x64.exe
 
-OpenRA installieren & starten
-(Windows / Linux / macOS – je nach Betriebssystem)
-
-Server beitreten
-
-Multiplayer → Internet
-
-Nach HC-Gaming | OpenRA suchen
+- OpenRA installieren & starten (Windows / Linux / macOS – je nach Betriebssystem)
+- Server beitreten
+- Multiplayer → Internet
+- Nach Gaming | OpenRA suchen
 
 Oder direkt über den Join-Button im Webpanel
 
@@ -102,17 +88,12 @@ um unnötige Last auf Masterserver und Browser zu vermeiden.
 
 ## 🔐 Sicherheit
 
-Keine sensiblen Daten
-
-Keine Tokens
-
-Keine API-Keys
-
-Keine Benutzerkonten
-
-Keine Datenbank
-
-Ausschließlich öffentlich verfügbare Datenquellen
+- Keine sensiblen Daten
+- Keine Tokens
+- Keine API-Keys
+- Keine Benutzerkonten
+- Keine Datenbank
+- Ausschließlich öffentlich verfügbare Datenquellen
 
 ## 📜 Lizenz / Hinweise
 
